@@ -1,0 +1,60 @@
+name: Sync TrainingPeaks to Intervals.icu
+
+on:
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: Preview changes without writing to Intervals.icu
+        type: boolean
+        required: false
+        default: true
+  schedule:
+    # GitHub cron is UTC. Running both hours covers Israel standard/daylight time.
+    - cron: "0 2 * * *"
+    - cron: "0 3 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: trainingpeaks-intervals-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check local execution time
+        id: schedule
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || [[ "$(TZ=Asia/Jerusalem date +%H)" == "05" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping duplicate UTC schedule outside 05:00 Asia/Jerusalem."
+          fi
+
+      - name: Checkout
+        if: steps.schedule.outputs.run == 'true'
+        uses: actions/checkout@v4
+
+      - name: Build runtime image
+        if: steps.schedule.outputs.run == 'true'
+        run: docker build --tag tp-intervals-syncer:run .
+
+      - name: Sync calendar
+        if: steps.schedule.outputs.run == 'true'
+        env:
+          TP_INTERVALS_SYNC_CONFIG: ${{ secrets.TP_INTERVALS_SYNC_CONFIG }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dryRun || false }}
+        shell: bash
+        run: |
+          args=()
+          if [[ "$DRY_RUN" == "true" ]]; then
+            args+=(--dry-run)
+          fi
+          docker run --rm --shm-size=2g \
+            -e TP_INTERVALS_SYNC_CONFIG \
+            tp-intervals-syncer:run "${args[@]}"
+
