@@ -37,7 +37,7 @@ jobs:
 
       - name: Checkout
         if: steps.schedule.outputs.run == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Build runtime image
         if: steps.schedule.outputs.run == 'true'
@@ -57,4 +57,3 @@ jobs:
           docker run --rm --shm-size=2g \
             -e TP_INTERVALS_SYNC_CONFIG \
             tp-intervals-syncer:run "${args[@]}"
-
