@@ -104,5 +104,20 @@ describe("TrainingPeaks conversion", () => {
     expect(event?.description).toContain("TrainingPeaks planned TSS: 75.4");
     expect(event?.description).toContain("TrainingPeaks planned IF: 0.71");
   });
-});
 
+  it("formats calculated metrics consistently without floating-point noise", () => {
+    const event = trainingPeaksWorkoutToEvent({
+      workoutId: 14,
+      workoutDay: "2026-08-23",
+      workoutTypeValueId: 3,
+      title: "Brick",
+      totalTimePlanned: 0.25,
+      tssPlanned: 6.884998476190471,
+      ifPlanned: 0.6774483251052404,
+    });
+
+    expect(event?.description).toContain("TrainingPeaks planned TSS: 6.885");
+    expect(event?.description).toContain("TrainingPeaks planned IF: 0.677448");
+    expect(event?.description).not.toContain("0.6774483251052404");
+  });
+});

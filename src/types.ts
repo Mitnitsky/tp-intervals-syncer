@@ -73,6 +73,7 @@ export interface SyncItem {
   type?: string;
   eventId?: number;
   adoptedExistingEvent?: boolean;
+  changedFields?: string[];
 }
 
 export interface SyncResult {
@@ -96,4 +97,3 @@ export interface SyncResult {
   dryRun: boolean;
   sourceOfTruth: "TrainingPeaks";
 }
-

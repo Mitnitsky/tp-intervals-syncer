@@ -26,7 +26,7 @@ function naturalPayloadKey(payload: IntervalsEventPayload): string {
   ].join("\u0000");
 }
 
-function eventMatchesPayload(event: IntervalsEvent, payload: IntervalsEventPayload): boolean {
+function changedFields(event: IntervalsEvent, payload: IntervalsEventPayload): string[] {
   const eventValues: Record<string, unknown> = {
     start_date_local: event.start_date_local,
     name: event.name,
@@ -38,7 +38,9 @@ function eventMatchesPayload(event: IntervalsEvent, payload: IntervalsEventPaylo
     icu_training_load: event.icu_training_load,
     external_id: event.external_id,
   };
-  return Object.entries(payload).every(([key, value]) => eventValues[key] === value);
+  return Object.entries(payload)
+    .filter(([key, value]) => eventValues[key] !== value)
+    .map(([key]) => key);
 }
 
 function itemFromPayload(payload: IntervalsEventPayload): SyncItem {
@@ -127,7 +129,8 @@ export async function syncWorkouts(
     }
 
     const item = itemFromPayload(payload);
-    if (existing && eventMatchesPayload(existing, payload)) {
+    const differences = existing ? changedFields(existing, payload) : [];
+    if (existing && differences.length === 0) {
       unchanged.push({ ...item, eventId: existing.id });
     } else if (existing) {
       const saved = options.dryRun
@@ -137,6 +140,7 @@ export async function syncWorkouts(
         ...item,
         eventId: saved.id,
         ...(adopted ? { adoptedExistingEvent: true } : {}),
+        changedFields: differences,
       });
     } else {
       const saved = options.dryRun ? undefined : await intervals.createEvent(payload);

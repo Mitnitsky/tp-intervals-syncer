@@ -64,6 +64,12 @@ describe("authoritative sync", () => {
         eventId: 1001,
         externalId: "tp:99",
         adoptedExistingEvent: true,
+        changedFields: expect.arrayContaining([
+          "description",
+          "moving_time",
+          "icu_training_load",
+          "external_id",
+        ]),
       }),
     ]);
     expect(intervals.updateEvent).toHaveBeenCalledWith(
@@ -150,4 +156,3 @@ describe("authoritative sync", () => {
     expect(intervals.createEvent).not.toHaveBeenCalled();
   });
 });
-

@@ -15,6 +15,10 @@ const sportTypes = new Map<number, string>([
 
 const trainingPeaksDayOffType = 7;
 
+function metricText(value: number): string {
+  return Number.parseFloat(value.toPrecision(6)).toString();
+}
+
 function durationText(length: TrainingPeaksLength | null | undefined): string {
   const value = Number(length?.value ?? 0);
   if (length?.unit === "second") {
@@ -168,10 +172,10 @@ export function trainingPeaksWorkoutToEvent(
   const metrics = [
     workout.tssPlanned == null
       ? undefined
-      : `TrainingPeaks planned TSS: ${Number(workout.tssPlanned)}`,
+      : `TrainingPeaks planned TSS: ${metricText(workout.tssPlanned)}`,
     workout.ifPlanned == null
       ? undefined
-      : `TrainingPeaks planned IF: ${Number(workout.ifPlanned)}`,
+      : `TrainingPeaks planned IF: ${metricText(workout.ifPlanned)}`,
   ].filter((text): text is string => Boolean(text));
   const description =
     [sourceText, workoutText, metrics.join("\n")]
@@ -197,4 +201,3 @@ export function trainingPeaksWorkoutToEvent(
   }
   return payload;
 }
-

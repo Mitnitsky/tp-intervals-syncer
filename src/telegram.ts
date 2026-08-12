@@ -5,6 +5,52 @@ interface TelegramConfig {
   chatId: string;
 }
 
+const fieldLabels: Record<string, string> = {
+  start_date_local: "date",
+  name: "title",
+  category: "category",
+  type: "sport",
+  description: "notes/workout structure",
+  moving_time: "duration",
+  distance: "distance",
+  icu_training_load: "training load",
+  external_id: "TrainingPeaks link",
+};
+
+function itemLine(item: SyncResult["updated"][number]): string {
+  const changes =
+    item.changedFields?.map((field) => fieldLabels[field] ?? field).join(", ") || "event details";
+  return `• ${item.date} — ${item.name}: ${changes}`;
+}
+
+function changeSection(result: SyncResult): string[] {
+  const sections: string[] = [];
+  if (result.created.length > 0) {
+    sections.push(
+      "",
+      result.dryRun ? "Would create:" : "Created:",
+      ...result.created.map((item) => `• ${item.date} — ${item.name}`),
+    );
+  }
+  if (result.updated.length > 0) {
+    sections.push(
+      "",
+      result.dryRun ? "Would update:" : "Updated:",
+      ...result.updated.map(itemLine),
+    );
+  }
+  if (result.staleNotDeleted.length > 0) {
+    sections.push(
+      "",
+      "Missing from TrainingPeaks (not deleted):",
+      ...result.staleNotDeleted.map(
+        (item) => `• ${item.date} — ${item.name ?? item.externalId}`,
+      ),
+    );
+  }
+  return sections;
+}
+
 function workflowUrl(): string {
   const server = process.env.GITHUB_SERVER_URL ?? "https://github.com";
   const repository = process.env.GITHUB_REPOSITORY ?? "Mitnitsky/tp-intervals-syncer";
@@ -43,6 +89,7 @@ export class TelegramNotifier {
       `Unchanged: ${result.unchanged.length}`,
       `Skipped: ${result.skipped.length}`,
       `Stale (not deleted): ${result.staleNotDeleted.length}`,
+      ...changeSection(result),
     ].join("\n");
     await this.#send(message, runUrl() ?? workflowUrl(), runUrl() ? "View run" : "Run sync");
   }

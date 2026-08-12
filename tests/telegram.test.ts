@@ -24,7 +24,17 @@ describe("TelegramNotifier", () => {
       sourceCount: 20,
       eligibleCount: 20,
       created: [],
-      updated: [],
+      updated: [
+        {
+          externalId: "tp:99",
+          date: "2026-08-14",
+          name: "Easy Run",
+          category: "WORKOUT",
+          type: "Run",
+          eventId: 1001,
+          changedFields: ["description", "moving_time"],
+        },
+      ],
       unchanged: [],
       skipped: [],
       staleNotDeleted: [],
@@ -45,6 +55,10 @@ describe("TelegramNotifier", () => {
     };
     expect(body.text).toContain("Dry run completed.");
     expect(body.text).toContain("Source: 20");
+    expect(body.text).toContain("Would update:");
+    expect(body.text).toContain(
+      "• 2026-08-14 — Easy Run: notes/workout structure, duration",
+    );
     expect(body.reply_markup.inline_keyboard[0]?.[0]?.url).toBe(
       "https://github.com/Mitnitsky/tp-intervals-syncer/actions/runs/123",
     );
