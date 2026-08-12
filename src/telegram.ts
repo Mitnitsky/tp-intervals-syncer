@@ -39,11 +39,11 @@ function changeSection(result: SyncResult): string[] {
       ...result.updated.map(itemLine),
     );
   }
-  if (result.staleNotDeleted.length > 0) {
+  if (result.deleted.length > 0) {
     sections.push(
       "",
-      "Missing from TrainingPeaks (not deleted):",
-      ...result.staleNotDeleted.map(
+      result.dryRun ? "Would delete (removed from TrainingPeaks):" : "Deleted:",
+      ...result.deleted.map(
         (item) => `• ${item.date} — ${item.name ?? item.externalId}`,
       ),
     );
@@ -88,7 +88,7 @@ export class TelegramNotifier {
       `Updated: ${result.updated.length}`,
       `Unchanged: ${result.unchanged.length}`,
       `Skipped: ${result.skipped.length}`,
-      `Stale (not deleted): ${result.staleNotDeleted.length}`,
+      `Deleted: ${result.deleted.length}`,
       ...changeSection(result),
     ].join("\n");
     await this.#send(message, runUrl() ?? workflowUrl(), runUrl() ? "View run" : "Run sync");

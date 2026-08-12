@@ -4,6 +4,7 @@ export interface IntervalsApi {
   getEvents(oldest: string, newest: string): Promise<IntervalsEvent[]>;
   createEvent(payload: IntervalsEventPayload): Promise<IntervalsEvent>;
   updateEvent(eventId: number, payload: IntervalsEventPayload): Promise<IntervalsEvent>;
+  deleteEvent(eventId: number): Promise<void>;
 }
 
 export class IntervalsClient implements IntervalsApi {
@@ -41,8 +42,15 @@ export class IntervalsClient implements IntervalsApi {
     );
   }
 
+  async deleteEvent(eventId: number): Promise<void> {
+    await this.#request<unknown>(
+      "DELETE",
+      `/athlete/${encodeURIComponent(this.#athleteId)}/events/${eventId}`,
+    );
+  }
+
   async #request<T>(
-    method: "GET" | "POST" | "PUT",
+    method: "GET" | "POST" | "PUT" | "DELETE",
     path: string,
     body?: IntervalsEventPayload,
   ): Promise<T> {
@@ -62,7 +70,9 @@ export class IntervalsClient implements IntervalsApi {
         `Intervals.icu ${method} ${path} failed with HTTP ${response.status}: ${responseText.slice(0, 500)}`,
       );
     }
+    if (response.status === 204 || response.headers.get("content-length") === "0") {
+      return undefined as T;
+    }
     return (await response.json()) as T;
   }
 }
-

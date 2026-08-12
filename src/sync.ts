@@ -148,14 +148,21 @@ export async function syncWorkouts(
     }
   }
 
-  const staleNotDeleted = [...existingByExternalId.values()]
-    .filter((event) => !seenExternalIds.has(event.external_id!))
+  const staleEvents = [...existingByExternalId.values()].filter(
+    (event) => !seenExternalIds.has(event.external_id!),
+  );
+  const deleted = staleEvents
     .map((event) => ({
       eventId: event.id,
       externalId: event.external_id!,
       date: event.start_date_local.slice(0, 10),
       ...(event.name !== undefined ? { name: event.name } : {}),
     }));
+  if (!options.dryRun) {
+    for (const event of staleEvents) {
+      await intervals.deleteEvent(event.id);
+    }
+  }
 
   return {
     dateRange: { oldest: options.oldest, newest: options.newest },
@@ -165,7 +172,7 @@ export async function syncWorkouts(
     updated,
     unchanged,
     skipped,
-    staleNotDeleted,
+    deleted,
     dryRun: options.dryRun,
     sourceOfTruth: "TrainingPeaks",
   };

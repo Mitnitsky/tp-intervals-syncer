@@ -37,7 +37,7 @@ describe("TelegramNotifier", () => {
       ],
       unchanged: [],
       skipped: [],
-      staleNotDeleted: [],
+      deleted: [],
       dryRun: true,
       sourceOfTruth: "TrainingPeaks",
     };

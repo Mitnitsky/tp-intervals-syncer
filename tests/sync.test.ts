@@ -16,6 +16,8 @@ class FakeIntervals implements IntervalsApi {
     }),
   );
 
+  readonly deleteEvent = vi.fn(async () => undefined);
+
   constructor(private readonly events: IntervalsEvent[]) {}
 
   async getEvents(): Promise<IntervalsEvent[]> {
@@ -110,7 +112,7 @@ describe("authoritative sync", () => {
     expect(intervals.createEvent).not.toHaveBeenCalled();
   });
 
-  it("reports removed source items without deleting them", async () => {
+  it("deletes managed events removed from TrainingPeaks", async () => {
     const intervals = new FakeIntervals([
       {
         id: 1003,
@@ -124,7 +126,7 @@ describe("authoritative sync", () => {
 
     const result = await syncWorkouts([], intervals, options);
 
-    expect(result.staleNotDeleted).toEqual([
+    expect(result.deleted).toEqual([
       {
         eventId: 1003,
         externalId: "tp:101",
@@ -132,8 +134,24 @@ describe("authoritative sync", () => {
         name: "Old workout",
       },
     ]);
-    expect(intervals.updateEvent).not.toHaveBeenCalled();
-    expect(intervals.createEvent).not.toHaveBeenCalled();
+    expect(intervals.deleteEvent).toHaveBeenCalledWith(1003);
+  });
+
+  it("preserves unrelated Intervals events", async () => {
+    const intervals = new FakeIntervals([
+      {
+        id: 1004,
+        start_date_local: "2026-08-16T00:00:00",
+        name: "Manual workout",
+        category: "WORKOUT",
+        type: "Run",
+      },
+    ]);
+
+    const result = await syncWorkouts([], intervals, options);
+
+    expect(result.deleted).toHaveLength(0);
+    expect(intervals.deleteEvent).not.toHaveBeenCalled();
   });
 
   it("does not make writes in dry-run mode", async () => {
@@ -154,5 +172,6 @@ describe("authoritative sync", () => {
 
     expect(result.created).toHaveLength(1);
     expect(intervals.createEvent).not.toHaveBeenCalled();
+    expect(intervals.deleteEvent).not.toHaveBeenCalled();
   });
 });

@@ -88,7 +88,7 @@ export interface SyncResult {
     date?: string;
     reason: string;
   }>;
-  staleNotDeleted: Array<{
+  deleted: Array<{
     eventId: number;
     externalId: string;
     date: string;

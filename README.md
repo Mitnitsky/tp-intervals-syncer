@@ -10,7 +10,8 @@ Intervals.icu. TrainingPeaks wins when a matching event differs.
 - Adopts one uniquely matching untagged Intervals.icu event instead of duplicating it.
 - Converts structured swim, bike, and run sessions to Intervals workout syntax.
 - Converts TrainingPeaks notes to Intervals notes and Day Off entries to `Rest Day`.
-- Reports source entries that disappeared but never deletes them automatically.
+- Deletes stale future events only when they are explicitly managed by this sync
+  (`external_id` starts with `tp:`). Manual and unrelated Intervals events are preserved.
 - Supports a no-write dry run.
 
 ## Configuration
