@@ -60,14 +60,22 @@ export class TrainingPeaksClient {
       await page.goto(loginUrl, { waitUntil: "domcontentloaded", timeout: 60_000 });
       await page.locator('input[name="Username"]').waitFor({ timeout: 30_000 });
 
-      const cookieButton = page.locator("#onetrust-accept-btn-handler");
-      if (await cookieButton.isVisible().catch(() => false)) {
-        await cookieButton.click();
+      for (const selector of [
+        "#onetrust-accept-btn-handler",
+        "#onetrust-reject-all-handler",
+        ".save-preference-btn-handler",
+        ".onetrust-close-btn-handler",
+      ]) {
+        const button = page.locator(selector).first();
+        if (await button.isVisible().catch(() => false)) {
+          await button.click({ force: true }).catch(() => undefined);
+          await page.waitForTimeout(250);
+        }
       }
 
       await page.locator('input[name="Username"]').fill(this.#username);
       await page.locator('input[name="Password"]').fill(this.#password);
-      await page.locator('button[type="submit"]').click();
+      await page.locator('button[type="submit"]').click({ force: true });
 
       this.#token = await this.#waitForToken(page);
       if (!this.#token) {
