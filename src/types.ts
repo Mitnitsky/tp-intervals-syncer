@@ -74,6 +74,14 @@ export interface SyncItem {
   eventId?: number;
   adoptedExistingEvent?: boolean;
   changedFields?: string[];
+  changeDetails?: ChangeDetail[];
+}
+
+export interface ChangeDetail {
+  field: string;
+  before: string;
+  after: string;
+  summary: string;
 }
 
 export interface SyncResult {

@@ -3,6 +3,7 @@ import type { IntervalsApi } from "./intervals.js";
 import type {
   IntervalsEvent,
   IntervalsEventPayload,
+  ChangeDetail,
   SyncItem,
   SyncResult,
   TrainingPeaksWorkout,
@@ -41,6 +42,73 @@ function changedFields(event: IntervalsEvent, payload: IntervalsEventPayload): s
   return Object.entries(payload)
     .filter(([key, value]) => eventValues[key] !== value)
     .map(([key]) => key);
+}
+
+function durationValue(value: unknown): string {
+  if (typeof value !== "number") {
+    return "not set";
+  }
+  const hours = Math.floor(value / 3600);
+  const minutes = Math.floor((value % 3600) / 60);
+  const seconds = value % 60;
+  return [
+    hours > 0 ? `${hours}h` : "",
+    minutes > 0 ? `${minutes}m` : "",
+    seconds > 0 ? `${seconds}s` : "",
+  ]
+    .filter(Boolean)
+    .join(" ") || "0s";
+}
+
+function fieldValue(field: string, value: unknown, compact: boolean): string {
+  if (value == null || value === "") {
+    return "not set";
+  }
+  if (field === "start_date_local" && typeof value === "string") {
+    return value.slice(0, 10);
+  }
+  if (field === "description" && typeof value === "string") {
+    return compact ? `${value.length} characters` : value || "empty";
+  }
+  if (field === "moving_time") {
+    return durationValue(value);
+  }
+  if (field === "distance" && typeof value === "number") {
+    return `${Number.parseFloat((value / 1_000).toFixed(3))} km`;
+  }
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return "changed";
+}
+
+function changeDetails(
+  event: IntervalsEvent,
+  payload: IntervalsEventPayload,
+  fields: string[],
+): ChangeDetail[] {
+  const eventValues: Record<string, unknown> = {
+    start_date_local: event.start_date_local,
+    name: event.name,
+    category: event.category,
+    type: event.type,
+    description: event.description,
+    moving_time: event.moving_time,
+    distance: event.distance,
+    icu_training_load: event.icu_training_load,
+    external_id: event.external_id,
+  };
+  const payloadValues = payload as unknown as Record<string, unknown>;
+  return fields.map((field) => ({
+    field,
+    before: fieldValue(field, eventValues[field], false),
+    after: fieldValue(field, payloadValues[field], false),
+    summary: `${fieldValue(field, eventValues[field], true)} → ${fieldValue(
+      field,
+      payloadValues[field],
+      true,
+    )}`,
+  }));
 }
 
 function itemFromPayload(payload: IntervalsEventPayload): SyncItem {
@@ -141,6 +209,7 @@ export async function syncWorkouts(
         eventId: saved.id,
         ...(adopted ? { adoptedExistingEvent: true } : {}),
         changedFields: differences,
+        changeDetails: changeDetails(existing, payload, differences),
       });
     } else {
       const saved = options.dryRun ? undefined : await intervals.createEvent(payload);

@@ -18,9 +18,33 @@ const fieldLabels: Record<string, string> = {
 };
 
 function itemLine(item: SyncResult["updated"][number]): string {
-  const changes =
+  const header = `• ${item.date} — ${item.name}`;
+  if (item.changeDetails?.length) {
+    return [
+      header,
+      ...item.changeDetails.map(
+        (change) => `  ${fieldLabels[change.field] ?? change.field}: ${change.summary}`,
+      ),
+    ].join("\n");
+  }
+  const fields =
     item.changedFields?.map((field) => fieldLabels[field] ?? field).join(", ") || "event details";
-  return `• ${item.date} — ${item.name}: ${changes}`;
+  return `${header}: ${fields}`;
+}
+
+function fullDiff(item: SyncResult["updated"][number]): string {
+  const details = item.changeDetails ?? [];
+  return [
+    `Full diff: ${item.date} — ${item.name}`,
+    ...details.flatMap((change) => [
+      "",
+      `${fieldLabels[change.field] ?? change.field}:`,
+      "Before:",
+      change.before,
+      "After:",
+      change.after,
+    ]),
+  ].join("\n");
 }
 
 function changeSection(result: SyncResult): string[] {
@@ -92,6 +116,13 @@ export class TelegramNotifier {
       ...changeSection(result),
     ].join("\n");
     await this.#send(message, runUrl() ?? workflowUrl(), runUrl() ? "View run" : "Run sync");
+    for (const item of result.updated) {
+      await this.#send(
+        fullDiff(item),
+        runUrl() ?? workflowUrl(),
+        runUrl() ? "View run" : "Run sync",
+      );
+    }
   }
 
   async sendFailed(error: unknown): Promise<void> {
@@ -104,22 +135,59 @@ export class TelegramNotifier {
   }
 
   async #send(message: string, link: string, buttonText: string): Promise<void> {
-    if (!this.#config) {
+    const config = this.#config;
+    if (!config) {
       return;
     }
+    const chunks = this.#chunks(message);
+    for (const [index, chunk] of chunks.entries()) {
+      await this.#sendChunk(config, chunk, link, buttonText, index === chunks.length - 1);
+    }
+  }
+
+  #chunks(message: string): string[] {
+    const maximum = 3_800;
+    if (message.length <= maximum) {
+      return [message];
+    }
+    const chunks: string[] = [];
+    let remaining = message;
+    while (remaining.length > maximum) {
+      let boundary = remaining.lastIndexOf("\n", maximum);
+      if (boundary < maximum / 2) {
+        boundary = maximum;
+      }
+      chunks.push(remaining.slice(0, boundary));
+      remaining = remaining.slice(boundary).replace(/^\n/, "");
+    }
+    chunks.push(remaining);
+    return chunks;
+  }
+
+  async #sendChunk(
+    config: TelegramConfig,
+    message: string,
+    link: string,
+    buttonText: string,
+    includeButton: boolean,
+  ): Promise<void> {
     for (let attempt = 1; attempt <= 3; attempt += 1) {
       const response = await fetch(
-        `https://api.telegram.org/bot${this.#config.botToken}/sendMessage`,
+        `https://api.telegram.org/bot${config.botToken}/sendMessage`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            chat_id: this.#config.chatId,
+            chat_id: config.chatId,
             text: message,
             disable_web_page_preview: true,
-            reply_markup: {
-              inline_keyboard: [[{ text: buttonText, url: link }]],
-            },
+            ...(includeButton
+              ? {
+                  reply_markup: {
+                    inline_keyboard: [[{ text: buttonText, url: link }]],
+                  },
+                }
+              : {}),
           }),
           signal: AbortSignal.timeout(15_000),
         },

@@ -72,6 +72,20 @@ describe("authoritative sync", () => {
           "icu_training_load",
           "external_id",
         ]),
+        changeDetails: expect.arrayContaining([
+          {
+            field: "description",
+            before: "Manual import",
+            after: "TrainingPeaks planned TSS: 20",
+            summary: "13 characters → 29 characters",
+          },
+          {
+            field: "moving_time",
+            before: "not set",
+            after: "30m",
+            summary: "not set → 30m",
+          },
+        ]),
       }),
     ]);
     expect(intervals.updateEvent).toHaveBeenCalledWith(
