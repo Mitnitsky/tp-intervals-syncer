@@ -9,6 +9,12 @@ const configSchema = z.object({
     apiKey: z.string().min(1),
     athleteId: z.string().min(1),
   }),
+  telegram: z
+    .object({
+      botToken: z.string().min(1),
+      chatId: z.string().min(1),
+    })
+    .optional(),
   sync: z
     .object({
       daysAhead: z.number().int().min(1).max(730).default(90),
@@ -47,4 +53,3 @@ export function loadConfig(raw = process.env.TP_INTERVALS_SYNC_CONFIG): SyncConf
   }
   return result.data;
 }
-

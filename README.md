@@ -27,6 +27,10 @@ Create one GitHub Actions repository secret named `TP_INTERVALS_SYNC_CONFIG`:
     "apiKey": "your-api-key",
     "athleteId": "i123456"
   },
+  "telegram": {
+    "botToken": "your-bot-token",
+    "chatId": "your-chat-id"
+  },
   "sync": {
     "daysAhead": 90,
     "includeToday": false,
@@ -39,6 +43,10 @@ Create one GitHub Actions repository secret named `TP_INTERVALS_SYNC_CONFIG`:
 The workflow runs at 05:00 Israel time. It is scheduled at both possible UTC hours
 and skips the duplicate, so daylight-saving changes do not shift the local run time.
 Manual runs default to dry-run.
+
+Telegram notifications report sync start, completion statistics, and failures. Each
+message includes a button to the current Actions run or the manual workflow page. The
+bot menu also contains a permanent **Run sync on GitHub** button.
 
 ## Local validation
 

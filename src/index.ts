@@ -3,6 +3,7 @@ import { trainingPeaksWorkoutToEvent } from "./convert.js";
 import { addDays, currentDateInTimeZone } from "./dates.js";
 import { IntervalsClient } from "./intervals.js";
 import { syncWorkouts } from "./sync.js";
+import { TelegramNotifier } from "./telegram.js";
 import { loadTrainingPeaksExport, TrainingPeaksClient } from "./trainingpeaks.js";
 
 interface Arguments {
@@ -62,23 +63,37 @@ async function main(): Promise<void> {
   }
 
   const config = loadConfig();
-  const today = currentDateInTimeZone(new Date(), config.sync.timeZone);
-  const oldest = config.sync.includeToday ? today : addDays(today, 1);
-  const newest = addDays(today, config.sync.daysAhead);
-  const sourceWorkouts = args.exportPath
-    ? await loadTrainingPeaksExport(args.exportPath)
-    : await new TrainingPeaksClient(
-        config.trainingPeaks.username,
-        config.trainingPeaks.password,
-      ).getPlannedWorkouts(oldest, newest);
-  const intervals = new IntervalsClient(config.intervals.apiKey, config.intervals.athleteId);
-  const result = await syncWorkouts(sourceWorkouts, intervals, {
-    oldest,
-    newest,
-    skipDates: new Set(config.sync.skipDates),
-    dryRun: args.dryRun,
-  });
-  console.log(JSON.stringify(result, null, 2));
+  const notifier = new TelegramNotifier(config.telegram);
+  const notify = async (send: () => Promise<void>): Promise<void> => {
+    await send().catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`Telegram notification error: ${message}`);
+    });
+  };
+  await notify(() => notifier.sendStarted(args.dryRun));
+  try {
+    const today = currentDateInTimeZone(new Date(), config.sync.timeZone);
+    const oldest = config.sync.includeToday ? today : addDays(today, 1);
+    const newest = addDays(today, config.sync.daysAhead);
+    const sourceWorkouts = args.exportPath
+      ? await loadTrainingPeaksExport(args.exportPath)
+      : await new TrainingPeaksClient(
+          config.trainingPeaks.username,
+          config.trainingPeaks.password,
+        ).getPlannedWorkouts(oldest, newest);
+    const intervals = new IntervalsClient(config.intervals.apiKey, config.intervals.athleteId);
+    const result = await syncWorkouts(sourceWorkouts, intervals, {
+      oldest,
+      newest,
+      skipDates: new Set(config.sync.skipDates),
+      dryRun: args.dryRun,
+    });
+    console.log(JSON.stringify(result, null, 2));
+    await notify(() => notifier.sendCompleted(result));
+  } catch (error) {
+    await notify(() => notifier.sendFailed(error));
+    throw error;
+  }
 }
 
 main().catch((error: unknown) => {
@@ -86,4 +101,3 @@ main().catch((error: unknown) => {
   console.error(`Sync failed: ${message}`);
   process.exitCode = 1;
 });
-
