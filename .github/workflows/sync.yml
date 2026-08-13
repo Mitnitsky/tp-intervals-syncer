@@ -9,7 +9,10 @@ on:
         required: false
         default: true
   schedule:
-    # GitHub cron is UTC. Running both hours covers Israel standard/daylight time.
+    # GitHub cron is UTC. Two daily triggers cover Israel standard (UTC+2) and
+    # daylight (UTC+3) time; the job below runs whichever one currently maps to
+    # 05:00 Asia/Jerusalem and skips the other. Actual start may be delayed by
+    # GitHub — that's fine, the decision keys off the cron identity, not the clock.
     - cron: "0 2 * * *"
     - cron: "0 3 * * *"
 
@@ -24,15 +27,29 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Check local execution time
+      - name: Decide whether this trigger maps to 05:00 Asia/Jerusalem
         id: schedule
         shell: bash
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || [[ "$(TZ=Asia/Jerusalem date +%H)" == "05" ]]; then
+          # Manual runs always proceed.
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Pick the cron that equals 05:00 local for the CURRENT season, based on
+          # Israel's UTC offset right now. This is independent of when GitHub
+          # actually starts the job, so a delayed run is never dropped.
+          offset="$(TZ=Asia/Jerusalem date +%z)"   # +0300 in summer (IDT), +0200 in winter (IST)
+          if [[ "$offset" == "+0300" ]]; then
+            want="0 2 * * *"   # 02:00 UTC == 05:00 IDT
+          else
+            want="0 3 * * *"   # 03:00 UTC == 05:00 IST
+          fi
+          if [[ "${{ github.event.schedule }}" == "$want" ]]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "Skipping duplicate UTC schedule outside 05:00 Asia/Jerusalem."
+            echo "Skipping cron '${{ github.event.schedule }}'; season offset $offset wants '$want'."
           fi
 
       - name: Checkout
