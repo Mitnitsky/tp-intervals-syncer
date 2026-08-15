@@ -49,6 +49,93 @@ describe("TrainingPeaks conversion", () => {
     expect(result).toContain("- 1m 70-80% pace intensity=rest Easy");
   });
 
+  it("labels threshold-HR run targets as LTHR instead of pace", () => {
+    const result = trainingPeaksStructureToIntervals(
+      {
+        primaryIntensityMetric: "percentOfThresholdHr",
+        structure: [
+          {
+            type: "step",
+            steps: [
+              {
+                name: "Warm up",
+                length: { value: 720, unit: "second" },
+                targets: [{ minValue: 71, maxValue: 77 }],
+                intensityClass: "warmUp",
+              },
+            ],
+          },
+          {
+            type: "repetition",
+            length: { value: 6, unit: "repetition" },
+            steps: [
+              {
+                name: "Surge",
+                length: { value: 20, unit: "second" },
+                targets: [{ minValue: 98, maxValue: 105 }],
+                intensityClass: "active",
+              },
+            ],
+          },
+        ],
+      },
+      "Run",
+    );
+
+    expect(result).toContain("- 12m 71-77% LTHR Warm up");
+    expect(result).toContain("- 20s 98-105% LTHR Surge");
+    expect(result).not.toContain("pace");
+  });
+
+  it("labels max-HR targets as HR", () => {
+    const result = trainingPeaksStructureToIntervals(
+      {
+        primaryIntensityMetric: "percentOfMaxHr",
+        structure: [
+          {
+            type: "step",
+            steps: [
+              {
+                name: "Easy",
+                length: { value: 600, unit: "second" },
+                targets: [{ minValue: 65, maxValue: 70 }],
+                intensityClass: "warmUp",
+              },
+            ],
+          },
+        ],
+      },
+      "Run",
+    );
+
+    expect(result).toContain("- 10m 65-70% HR Easy");
+  });
+
+  it("keeps FTP power targets as bare percentages", () => {
+    const result = trainingPeaksStructureToIntervals(
+      {
+        primaryIntensityMetric: "percentOfFtp",
+        structure: [
+          {
+            type: "step",
+            steps: [
+              {
+                name: "Tempo",
+                length: { value: 600, unit: "second" },
+                targets: [{ minValue: 88, maxValue: 94 }],
+                intensityClass: "active",
+              },
+            ],
+          },
+        ],
+      },
+      "Ride",
+    );
+
+    expect(result).toContain("- 10m 88-94% Tempo");
+    expect(result).not.toContain("pace");
+  });
+
   it("converts day off to a Rest Day note", () => {
     expect(
       trainingPeaksWorkoutToEvent({

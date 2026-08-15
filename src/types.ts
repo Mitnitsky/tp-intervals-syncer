@@ -23,6 +23,8 @@ export interface TrainingPeaksBlock {
 
 export interface TrainingPeaksStructure {
   structure?: TrainingPeaksBlock | TrainingPeaksBlock[] | null;
+  primaryIntensityMetric?: string | null;
+  primaryLengthMetric?: string | null;
 }
 
 export interface TrainingPeaksWorkout {

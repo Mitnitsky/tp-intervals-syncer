@@ -34,19 +34,48 @@ function durationText(length: TrainingPeaksLength | null | undefined): string {
   return `${Math.round(value)}s`;
 }
 
-function targetText(step: TrainingPeaksStep, sport: string): string {
+function targetPercent(step: TrainingPeaksStep): string | undefined {
   const target = step.targets?.[0];
   if (!target) {
-    return "free";
+    return undefined;
   }
   const minimum = Math.round(Number(target.minValue ?? 0));
   const maximum = Math.round(Number(target.maxValue ?? minimum));
-  const percentage = minimum === maximum ? `${minimum}%` : `${minimum}-${maximum}%`;
-  return sport === "Run" || sport === "Swim" ? `${percentage} pace` : percentage;
+  return minimum === maximum ? `${minimum}%` : `${minimum}-${maximum}%`;
 }
 
-function stepLine(step: TrainingPeaksStep, sport: string): string {
-  const parts = [`- ${durationText(step.length)}`, targetText(step, sport)];
+// Maps the TrainingPeaks structure-level intensity metric to the Intervals.icu
+// workout-builder target suffix. Falls back to the sport default (pace for
+// Run/Swim, power/FTP for everything else) when TrainingPeaks omits the metric.
+function intensitySuffix(
+  structure: TrainingPeaksStructure | null | undefined,
+  sport: string,
+): string {
+  switch (structure?.primaryIntensityMetric) {
+    case "percentOfThresholdPace":
+      return " pace";
+    case "percentOfThresholdHr":
+      return " LTHR";
+    case "percentOfMaxHr":
+      return " HR";
+    case "percentOfFtp":
+    case "percentOfThresholdPower":
+      return "";
+    default:
+      return sport === "Run" || sport === "Swim" ? " pace" : "";
+  }
+}
+
+function targetText(step: TrainingPeaksStep, suffix: string): string {
+  const percentage = targetPercent(step);
+  if (!percentage) {
+    return "free";
+  }
+  return `${percentage}${suffix}`;
+}
+
+function stepLine(step: TrainingPeaksStep, suffix: string): string {
+  const parts = [`- ${durationText(step.length)}`, targetText(step, suffix)];
   if (step.intensityClass === "rest") {
     parts.push("intensity=rest");
   }
@@ -73,6 +102,7 @@ export function trainingPeaksStructureToIntervals(
 ): string {
   const sections: string[] = [];
   let currentHeader: string | undefined;
+  const suffix = intensitySuffix(structure, sport);
 
   const addHeader = (header: string): void => {
     if (currentHeader === header) {
@@ -95,7 +125,7 @@ export function trainingPeaksStructureToIntervals(
         sections.push("");
       }
       const repetitions = Math.max(1, Math.round(Number(block.length?.value ?? 1)));
-      sections.push(`Main ${repetitions}x`, ...steps.map((step) => stepLine(step, sport)), "");
+      sections.push(`Main ${repetitions}x`, ...steps.map((step) => stepLine(step, suffix)), "");
       currentHeader = undefined;
       continue;
     }
@@ -107,14 +137,13 @@ export function trainingPeaksStructureToIntervals(
 
     if ((block.type === "rampUp" || block.type === "rampDown") && steps.length > 1) {
       const totalSeconds = steps.reduce((sum, step) => sum + Number(step.length?.value ?? 0), 0);
-      const firstTarget = targetText(steps[0]!, sport).replace("% pace", "");
-      const lastTarget = targetText(steps.at(-1)!, sport).replace("% pace", "");
-      const suffix = sport === "Run" || sport === "Swim" ? " pace" : "";
+      const firstTarget = (targetPercent(steps[0]!) ?? "").replace("%", "");
+      const lastTarget = targetPercent(steps.at(-1)!) ?? "";
       sections.push(
-        `- ${durationText({ value: totalSeconds, unit: "second" })} ramp ${firstTarget.replace("%", "")}-${lastTarget}${suffix}`,
+        `- ${durationText({ value: totalSeconds, unit: "second" })} ramp ${firstTarget}-${lastTarget}${suffix}`,
       );
     } else {
-      sections.push(...steps.map((step) => stepLine(step, sport)));
+      sections.push(...steps.map((step) => stepLine(step, suffix)));
     }
   }
 
