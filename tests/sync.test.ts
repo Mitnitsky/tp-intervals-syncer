@@ -91,6 +91,7 @@ describe("authoritative sync", () => {
     expect(intervals.updateEvent).toHaveBeenCalledWith(
       1001,
       expect.objectContaining({
+        start_date_local: "2026-08-14T06:00:00",
         external_id: "tp:99",
         description: expect.stringContaining("TrainingPeaks planned TSS: 20"),
       }),

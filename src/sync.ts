@@ -1,5 +1,6 @@
 import { trainingPeaksWorkoutToEvent } from "./convert.js";
 import type { IntervalsApi } from "./intervals.js";
+import { schedulePlannedWorkouts } from "./schedule.js";
 import type {
   IntervalsEvent,
   IntervalsEventPayload,
@@ -65,7 +66,7 @@ function fieldValue(field: string, value: unknown, compact: boolean): string {
     return "not set";
   }
   if (field === "start_date_local" && typeof value === "string") {
-    return value.slice(0, 10);
+    return value.replace("T", " ").replace(/:00$/, "");
   }
   if (field === "description" && typeof value === "string") {
     return compact ? `${value.length} characters` : value || "empty";
@@ -166,6 +167,7 @@ export async function syncWorkouts(
     payloads.push(payload);
   }
 
+  const scheduledPayloads = schedulePlannedWorkouts(payloads);
   const existingEvents = await intervals.getEvents(options.oldest, options.newest);
   const existingByExternalId = new Map(
     existingEvents
@@ -185,7 +187,7 @@ export async function syncWorkouts(
   const updated: SyncItem[] = [];
   const unchanged: SyncItem[] = [];
 
-  for (const payload of payloads) {
+  for (const payload of scheduledPayloads) {
     let existing = existingByExternalId.get(payload.external_id);
     let adopted = false;
     if (!existing) {
@@ -236,7 +238,7 @@ export async function syncWorkouts(
   return {
     dateRange: { oldest: options.oldest, newest: options.newest },
     sourceCount: sourceWorkouts.length,
-    eligibleCount: payloads.length,
+    eligibleCount: scheduledPayloads.length,
     created,
     updated,
     unchanged,
