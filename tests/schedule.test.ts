@@ -34,6 +34,18 @@ describe("planned workout scheduling", () => {
     ]);
   });
 
+  it("schedules a mid-week brick sequentially from 05:00", () => {
+    const result = schedulePlannedWorkouts([
+      workout("2026-08-26", "bike", "Ride", 5400),
+      workout("2026-08-26", "run", "Run", 2700),
+    ]);
+
+    expect(result.map((event) => event.start_date_local)).toEqual([
+      "2026-08-26T05:00:00",
+      "2026-08-26T06:30:00",
+    ]);
+  });
+
   it("starts Tuesday and Thursday swims at 06:15", () => {
     const result = schedulePlannedWorkouts([
       workout("2026-08-25", "tuesday", "Swim", 3600),

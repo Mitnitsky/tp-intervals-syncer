@@ -1,9 +1,11 @@
 import type { IntervalsEventPayload } from "./types.js";
 
-const weekdayStartTimes = new Map<number, string>([
-  [0, "05:00:00"],
-  [1, "05:00:00"],
-  [3, "05:00:00"],
+const sequentialStartSeconds = new Map<number, number>([
+  [0, 5 * 3600],
+  [1, 5 * 3600],
+  [3, 5 * 3600],
+  [5, 6 * 3600],
+  [6, 6 * 3600],
 ]);
 
 function weekday(date: string): number {
@@ -20,7 +22,7 @@ function timeText(totalSeconds: number): string {
 export function schedulePlannedWorkouts(
   payloads: IntervalsEventPayload[],
 ): IntervalsEventPayload[] {
-  const weekendCursors = new Map<string, number>();
+  const dailyCursors = new Map<string, number>();
 
   return payloads.map((payload) => {
     if (payload.category !== "WORKOUT") {
@@ -29,14 +31,15 @@ export function schedulePlannedWorkouts(
 
     const date = payload.start_date_local.slice(0, 10);
     const day = weekday(date);
-    let startTime = weekdayStartTimes.get(day);
+    let startTime: string | undefined;
+    const firstStartSeconds = sequentialStartSeconds.get(day);
 
-    if ((day === 2 || day === 4) && payload.type === "Swim") {
-      startTime = "06:15:00";
-    } else if (day === 5 || day === 6) {
-      const startSeconds = weekendCursors.get(date) ?? 6 * 3600;
+    if (firstStartSeconds !== undefined) {
+      const startSeconds = dailyCursors.get(date) ?? firstStartSeconds;
       startTime = timeText(startSeconds);
-      weekendCursors.set(date, startSeconds + (payload.moving_time ?? 0));
+      dailyCursors.set(date, startSeconds + (payload.moving_time ?? 0));
+    } else if ((day === 2 || day === 4) && payload.type === "Swim") {
+      startTime = "06:15:00";
     }
 
     return startTime

@@ -9,9 +9,9 @@ Intervals.icu. TrainingPeaks wins when a matching event differs.
 - Uses `external_id=tp:<workoutId>` for idempotent creates and updates.
 - Adopts one uniquely matching untagged Intervals.icu event instead of duplicating it.
 - Converts structured swim, bike, and run sessions to Intervals workout syntax.
-- Assigns planned local start times: Sunday/Monday/Wednesday at 05:00,
-  Tuesday/Thursday swims at 06:15, and Friday/Saturday workouts sequentially
-  from 06:00 using their planned durations and TrainingPeaks order.
+- Assigns planned local start times: Sunday/Monday/Wednesday workouts sequentially
+  from 05:00, Tuesday/Thursday swims at 06:15, and Friday/Saturday workouts
+  sequentially from 06:00 using their planned durations and TrainingPeaks order.
 - Converts TrainingPeaks notes to Intervals notes and Day Off entries to `Rest Day`.
 - Deletes stale future events only when they are explicitly managed by this sync
   (`external_id` starts with `tp:`). Manual and unrelated Intervals events are preserved.
